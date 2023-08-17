@@ -1,0 +1,172 @@
+@startuml
+'configuration package
+class KafkaConsumerConfiguration {
++ ConsumerFactory<String,MatchingUser> matchingUserConsumerFactory()
++ ConcurrentKafkaListenerContainerFactory<String,MatchingUser> matchingUserKafkaListener()
+}
+class KafkaProducerConfiguration {
++ ProducerFactory<String,Match> matchProducerFactory()
++ KafkaTemplate<String,Match> matchKafkaProducerTemplate()
+}
+class OpenSearchConfiguration {
++ RestHighLevelClient opensearchClient()
+}
+class SchedulerConfiguration {
+}
+class OpenSearchConfiguration {
++ RestHighLevelClient opensearchClient()
+}
+
+'constants package
+class ControllerConstants {
++ {static} String ROOT_PATH
+}
+class GlobalExceptionHandlerMessageConstants {
++ {static} String BASE_MESSAGE
++ {static} String ENTITY_NOT_FOUND_MESSAGE
+}
+
+'controller package
+class MatchingController {
++ void findMatch()
+}
+class MatchingUserController {
++ List<MatchingUser> getMatchingUsers()
++ MatchingUser getMatchingUser(String)
++ void addMatchingUser(MatchingUser)
++ MatchingUser updateMatchingUser(String,MatchingUser)
++ MatchingUser deleteMatchingUser(String)
+}
+
+'engine package
+class MatchingEngine {
++ void runMatching()
+}
+
+'enums package
+enum ActionType {
++  CREATED
++  DELETED
++  UPDATED
+}
+
+'exception package
+class GlobalExceptionHandler {
++ ResponseEntity<ErrorMessage> handleException(Exception)
++ ResponseEntity<ErrorMessage> handleEntityNotFoundException(EntityNotFoundException)
+}
+class SearchRequestException {
++ <<Create>> SearchRequestException(String,Throwable)
+}
+
+'kafka package
+class MatchRequestConsumerService {
++ void listen(MatchingUser)
+}
+class MatchResultProducerService {
+- String producerTopicName
+- KafkaTemplate<String,Match> matchKafkaProducerTemplate
++ void send(Match)
+}
+
+'model package
+abstract class AbstractEntity {
+- String id
+}
+class ActionLog {
+- Timestamp timestamp
+- ActionType actionType
+- String entityName
+}
+class Match {
+- String matchedUserInternalId1
+- String matchedUserInternalId2
+}
+class MatchingUser {
+- String internalId
+- int age
+- int rating
+}
+
+'repository package
+interface ActionLogRepository {
+}
+interface MatchingUserRepository {
+~ Optional<MatchingUser> getMatchingUserByInternalId(String)
+~ void deleteMatchingUserByInternalId(String)
+}
+
+'service package
+class ActionLogService {
+- {static} String NO_ACTION_LOG_FOUND
++ ActionLog getActionLog(ActionLog)
++ void addActionLog(ActionLog)
++ void deleteActionLog(ActionLog)
+}
+class MatchingService {
+- {static} String SEARCH_ERROR
++ Match findMatch()
++ Match findMatchByMatchingUserInternalId(String)
++ Match executeSearchRequest(MatchingUser)
+- SearchRequest buildSearchRequestForMatchingUser(MatchingUser)
+}
+class MatchingUserService {
+- {static} String NO_MATCHING_USER_FOUND
++ List<MatchingUser> getMatchingUsers()
++ MatchingUser getMatchingUser(String)
++ MatchingUser getMatchingUserByInternalId(String)
++ void addMatchingUser(MatchingUser)
++ MatchingUser updateMatchingUser(String,MatchingUser)
++ void deleteMatchingUserById(String)
++ void deleteMatchingUserByInternalId(String)
++ void deleteMatchedUsers(MatchingUser,MatchingUser)
+}
+
+'utils package
+class ConversionUtils {
++ {static} MatchingUser searchHitToMatchingUser(SearchHit)
+}
+
+'application class
+class MatchingServiceApplication {
++ {static} void main(String[])
+}
+
+'connections
+AbstractEntity <|-- ActionLog
+AbstractEntity <|-- Match
+AbstractEntity <|-- MatchingUser
+
+ActionLog *-- ActionType
+
+ActionLogService  <... ActionLogRepository : use CRUD methods
+MatchingUserService  <... MatchingUserRepository : use CRUD methods
+
+MatchingController <... MatchResultProducerService : send to Kafka
+MatchingEngine <... MatchResultProducerService : send to Kafka
+
+MatchingService <... ActionLogService : write logs to database
+MatchingController <... MatchingService : find match
+MatchingEngine <... MatchingService : find match
+
+MatchingService <... MatchingUserService : use CRUD methods via service
+MatchRequestConsumerService <... MatchingUserService : use CRUD methods via service
+
+MatchingService <... ConversionUtils : use object conversion
+
+MatchingService <... SearchRequestException : use exception
+
+MatchingController <... ControllerConstants : use constant for request path
+MatchingUserController <... ControllerConstants : use constant for request path
+GlobalExceptionHandler <... GlobalExceptionHandlerMessageConstants : use constant for exception
+
+MatchingServiceApplication <-- KafkaConsumerConfiguration : add configuration to context
+MatchingServiceApplication <-- KafkaProducerConfiguration : add configuration to context
+MatchingServiceApplication <-- OpenSearchConfiguration : add configuration to context
+MatchingServiceApplication <-- SchedulerConfiguration : add configuration to context
+MatchingServiceApplication <-- GlobalExceptionHandler : init exception handler
+MatchingServiceApplication <-- MatchingController : init controller
+MatchingServiceApplication <-- MatchingUserController : init controller
+MatchingServiceApplication <-- MatchingEngine : init matching engine
+MatchingServiceApplication <-- MatchRequestConsumerService : init Kafka consumer
+@enduml
